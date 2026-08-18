@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Family board — Near Nancy's</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="inner">
+      <a class="brand" href="index.html">
+        <span>Handy · Vassileva</span>
+        <strong>Near Nancy's</strong>
+      </a>
+      <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="savings.html">Savings</a>
+      <a href="house.html">House</a>
+      <a href="board.html" class="active">Board</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="page-head">
+      <div class="bloom" aria-hidden="true"></div>
+      <div class="eyebrow">Interpersonal · optional name · no email</div>
+      <h1>Say the thing <em>kindly</em>.</h1>
+      <p class="sub">For the feelings that don't belong on a listing card. Display name is optional — it defaults to Family. No email, no account.</p>
+    </header>
+
+    <div class="callout soft-cedar">
+      <p>This first version lives in the browser until we add shared hosting. You can still write things privately on your own phone. If you want everyone to see a note, ask Victoria or Vine to post it for the family.</p>
+    </div>
+
+    <div class="section-label">Starter prompts <span>not fake posts — tap one to begin</span></div>
+    <div class="prompt-grid" id="prompts">
+      <button type="button" class="prompt" data-prompt="How do we handle extra August guests?">
+        <small>August</small>
+        <span>How do we handle extra August guests?</span>
+      </button>
+      <button type="button" class="prompt" data-prompt="What would make the house feel fair?">
+        <small>Fairness</small>
+        <span>What would make the house feel fair?</span>
+      </button>
+      <button type="button" class="prompt" data-prompt="What does enough bedrooms actually mean for us?">
+        <small>The house itself</small>
+        <span>What does “enough bedrooms” actually mean for us?</span>
+      </button>
+      <button type="button" class="prompt" data-prompt="Who wants to be first to walk from our place to Nancy's in the morning?">
+        <small>The good part</small>
+        <span>Who wants first walk to Nancy's?</span>
+      </button>
+    </div>
+
+    <div class="section-label">Write a note <span>stays on this device</span></div>
+    <div class="two-col">
+      <form class="callout" id="board-form">
+        <label>Display name <span style="font-weight:400;color:var(--muted)">(optional — blank becomes Family)</span>
+          <input type="text" id="display-name" placeholder="Family" maxlength="40" />
+        </label>
+        <label>Note
+          <textarea id="body" required placeholder="What's on your mind about the house, the summer, the money, the people…"></textarea>
+        </label>
+        <button class="btn primary" type="submit">Save to this phone</button>
+        <p class="saved-ok" id="form-msg"></p>
+      </form>
+      <div>
+        <div class="posts" id="posts"></div>
+        <div class="empty" id="board-empty">
+          <h3>No notes on this phone yet</h3>
+          <p>Write one for yourself, or ask Victoria / Vine to put a shared note up once hosting exists.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <p><em>A family house, not a project plan.</em><br/>
+    Jannah, Kenya, Jacqueline, Kiyanna, Edna &amp; Victoria · purchase only · Martha's Vineyard</p>
+  </footer>
+
+  <script>
+
+    const KEY = "vineyard-board-v1";
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { return []; }
+    }
+    function save(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
+    function esc(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+    let posts = load();
+
+    function render() {
+      const wrap = document.getElementById("posts");
+      const empty = document.getElementById("board-empty");
+      wrap.innerHTML = "";
+      if (!posts.length) {
+        empty.hidden = false;
+        return;
+      }
+      empty.hidden = true;
+      posts.slice().reverse().forEach((p) => {
+        const el = document.createElement("article");
+        el.className = "post";
+        el.innerHTML =
+          '<div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap">' +
+            '<div class="who">' + esc(p.name) + '</div>' +
+            '<div class="when">' + esc(p.when) + '</div>' +
+          '</div>' +
+          '<p>' + esc(p.body) + '</p>' +
+          '<div class="actions"><button type="button" class="btn outline" data-del="' + p.id + '">Remove from this phone</button></div>';
+        wrap.appendChild(el);
+      });
+    }
+
+    document.getElementById("board-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("display-name").value.trim() || "Family";
+      const body = document.getElementById("body").value.trim();
+      if (!body) return;
+      posts.push({
+        id: String(Date.now()),
+        name,
+        body,
+        when: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+      });
+      save(posts);
+      document.getElementById("body").value = "";
+      document.getElementById("form-msg").textContent = "Saved on this phone.";
+      render();
+    });
+
+    document.getElementById("posts").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-del]");
+      if (!btn) return;
+      posts = posts.filter((p) => p.id !== btn.dataset.del);
+      save(posts);
+      render();
+    });
+
+    document.getElementById("prompts").addEventListener("click", (e) => {
+      const card = e.target.closest(".prompt");
+      if (!card) return;
+      const text = card.dataset.prompt;
+      const ta = document.getElementById("body");
+      if (!ta.value) ta.value = text + "\n\n";
+      else ta.value = ta.value.trim() + "\n\n" + text;
+      ta.focus();
+      ta.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    render();
+
+  </script>
+</body>
+</html>

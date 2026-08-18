@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Listings — Near Nancy's</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="inner">
+      <a class="brand" href="index.html">
+        <span>Handy · Vassileva</span>
+        <strong>Near Nancy's</strong>
+      </a>
+      <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html" class="active">Listings</a>
+      <a href="savings.html">Savings</a>
+      <a href="house.html">House</a>
+      <a href="board.html">Board</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="page-head">
+      <div class="bloom" aria-hidden="true"></div>
+      <div class="eyebrow">Homes &amp; land · within ~25 min of Oak Bluffs</div>
+      <h1>What Vine is watching</h1>
+      <p class="sub">Homes we could walk into, and land we could grow into. Vote on your phone. Notes stay on this device until we add shared hosting.</p>
+      <div class="filters" id="filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="homes">Homes</button>
+        <button class="chip" data-filter="land">Land</button>
+        <button class="chip" data-filter="under2m">Under $2M</button>
+        <button class="chip" data-filter="pool">Pool</button>
+        <button class="chip" data-filter="beach">Beach</button>
+        <button class="chip" data-filter="over">Over budget</button>
+      </div>
+    </header>
+
+    <p class="market-note" id="market">Loading the latest batch…</p>
+    <div class="section-label">On the list <span id="count">…</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty">
+      <h3>Vine is pulling the first batch</h3>
+      <p>Homes and land near Nancy's will land here. Nothing is missing — we just haven't written the first cards yet.</p>
+    </div>
+  </div>
+  <footer>
+    <p><em>A family house, not a project plan.</em><br/>
+    Jannah, Kenya, Jacqueline, Kiyanna, Edna &amp; Victoria · purchase only · Martha's Vineyard</p>
+  </footer>
+
+  <script>
+
+    const VOTE_KEY = "vineyard-votes-v1";
+    const NOTE_KEY = "vineyard-listing-notes-v1";
+    const FIT_LABEL = {
+      "strong": "Strong",
+      "stretch-budget": "Stretch budget",
+      "4bed-expandable": "4-bed expandable",
+      "land": "Land"
+    };
+    const FIT_CLASS = {
+      "strong": "strong",
+      "stretch-budget": "stretch-budget",
+      "4bed-expandable": "fourbed-expandable",
+      "land": "land"
+    };
+
+    function loadJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+    function saveJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+    function safeUrl(url) {
+      const u = String(url || "");
+      if (/^https?:\/\//i.test(u)) return u;
+      return "#";
+    }
+    function safePhoto(name) {
+      const n = String(name || "").replace(/^.*[\\\/]/, "");
+      if (!n || n.startsWith(".")) return "";
+      return "images/" + n;
+    }
+    function money(n) {
+      if (n == null || n === "" || Number.isNaN(Number(n))) return "Price TBA";
+      return Number(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    }
+    function isLand(item) {
+      return String(item.type || "").toLowerCase() === "land";
+    }
+    function photoSrc(item) {
+      if (item.photo_local) return safePhoto(item.photo_local);
+      if (item.photo_url && /^https?:\/\//i.test(item.photo_url)) return item.photo_url;
+      return null;
+    }
+    function placeholderClass(item, i) {
+      if (isLand(item)) return "ph-land";
+      return ["", "ph-2", "ph-3"][i % 3];
+    }
+    function specs(item) {
+      if (isLand(item)) {
+        const acres = item.lot_acres != null ? item.lot_acres + " acres" : "Acreage TBA";
+        return acres;
+      }
+      const beds = item.beds != null ? item.beds + " bed" : "Beds TBA";
+      const baths = item.baths != null ? item.baths + " bath" : "Baths TBA";
+      const extra = [];
+      if (item.sqft) extra.push(Number(item.sqft).toLocaleString() + " sqft");
+      if (item.lot_acres) extra.push(item.lot_acres + " ac");
+      return [beds, baths].concat(extra).join(" · ");
+    }
+
+    const votes = loadJson(VOTE_KEY, {});
+    const notes = loadJson(NOTE_KEY, {});
+    let allListings = [];
+    let filter = "all";
+
+    const grid = document.getElementById("grid");
+    const empty = document.getElementById("empty");
+    const market = document.getElementById("market");
+    const countEl = document.getElementById("count");
+
+    function truthyAmenity(v) {
+      if (v === true) return true;
+      if (v === false || v == null || v === "") return false;
+      const s = String(v).trim().toLowerCase();
+      if (!s || s === "false" || s === "no" || s === "none") return false;
+      if (s.startsWith("none noted") || s.startsWith("none;") || s.startsWith("none,")) return false;
+      return true;
+    }
+    function applyFilter(item) {
+      const land = isLand(item);
+      const price = Number(item.price);
+      if (filter === "all") return true;
+      if (filter === "homes") return !land;
+      if (filter === "land") return land;
+      if (filter === "under2m") return !Number.isNaN(price) && price < 2000000;
+      if (filter === "pool") return truthyAmenity(item.pool);
+      if (filter === "beach") return truthyAmenity(item.beach_access);
+      if (filter === "over") return !Number.isNaN(price) && price >= 2000000;
+      return true;
+    }
+
+    function render() {
+      const shown = allListings.filter(applyFilter);
+      countEl.textContent = allListings.length
+        ? shown.length + " of " + allListings.length
+        : "waiting";
+      grid.innerHTML = "";
+      if (!allListings.length) {
+        empty.hidden = false;
+        empty.querySelector("h3").textContent = "Vine is pulling the first batch";
+        empty.querySelector("p").textContent = "Homes and land near Nancy's will land here. Nothing is missing — we just haven't written the first cards yet.";
+        return;
+      }
+      if (!shown.length) {
+        empty.hidden = false;
+        empty.querySelector("h3").textContent = "Nothing in this filter";
+        empty.querySelector("p").textContent = "Try All, or a wider net. The batch is small on purpose.";
+        return;
+      }
+      empty.hidden = true;
+
+      shown.forEach((item, i) => {
+        const id = item.id || ("tmp-" + i);
+        const src = photoSrc(item);
+        const fit = item.fit || (isLand(item) ? "land" : "strong");
+        const vote = votes[id] || "";
+        const note = notes[id] || "";
+        const drive = item.drive_min_estimate != null
+          ? "≈ " + item.drive_min_estimate + " min to Nancy's"
+          : "Drive time TBA";
+        const tags = [];
+        if (truthyAmenity(item.pool)) tags.push('<span class="tag pool">Pool</span>');
+        if (truthyAmenity(item.beach_access)) tags.push('<span class="tag beach">Beach</span>');
+        if (isLand(item)) tags.push('<span class="tag land">Land</span>');
+        const beachNote = (typeof item.beach_access === "string" && truthyAmenity(item.beach_access))
+          ? '<div class="meta">' + esc(item.beach_access) + '</div>'
+          : "";
+        const url = safeUrl(item.listing_url);
+        const address = esc(item.address || "Address TBA");
+        const town = esc(item.town || "Martha's Vineyard");
+        const listingNotes = item.notes ? esc(item.notes) : "";
+        const status = String(item.status || "active").toLowerCase();
+        const photoHtml = src
+          ? '<img src="' + esc(src) + '" alt="' + address + '" loading="lazy" />'
+          : "";
+
+        const article = document.createElement("article");
+        article.className = "card";
+        article.innerHTML =
+          '<div class="photo ' + placeholderClass(item, i) + '">' +
+            photoHtml +
+            '<span class="badge ' + (FIT_CLASS[fit] || "strong") + '">' + esc(FIT_LABEL[fit] || fit) + '</span>' +
+            '<span class="photo-chip">' + town + '</span>' +
+          '</div>' +
+          '<div class="card-body">' +
+            '<div class="meta">' + town + " · " + drive + '</div>' +
+            '<h2 class="name">' + address + '</h2>' +
+            '<div class="price">' + money(item.price) + '</div>' +
+            '<div class="meta">' + specs(item) + (item.year_built ? " · built " + item.year_built : "") + '</div>' +
+            (tags.length ? '<div class="tags">' + tags.join("") + '</div>' : "") +
+            beachNote +
+            (listingNotes ? '<p class="notes">' + listingNotes + '</p>' : "") +
+            (status && status !== "active" ? '<div class="meta">Status: ' + esc(item.status) + '</div>' : "") +
+            '<div class="vote-row" data-id="' + esc(id) + '">' +
+              '<button type="button" class="vote love' + (vote === "love" ? " active" : "") + '" data-vote="love">Love</button>' +
+              '<button type="button" class="vote maybe' + (vote === "maybe" ? " active" : "") + '" data-vote="maybe">Maybe</button>' +
+              '<button type="button" class="vote pass' + (vote === "pass" ? " active" : "") + '" data-vote="pass">Pass</button>' +
+            '</div>' +
+            '<label>Your note <textarea class="card-note" data-note="' + esc(id) + '" placeholder="What we like, what worries us…">' + esc(note) + '</textarea></label>' +
+            '<div class="actions">' +
+              '<a class="btn primary" href="' + url + '" target="_blank" rel="noopener">View listing →</a>' +
+            '</div>' +
+          '</div>';
+        grid.appendChild(article);
+      });
+    }
+
+    document.getElementById("filters").addEventListener("click", (e) => {
+      const btn = e.target.closest(".chip");
+      if (!btn) return;
+      filter = btn.dataset.filter;
+      document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === btn));
+      render();
+    });
+
+    grid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".vote");
+      if (!btn) return;
+      const id = btn.parentElement.dataset.id;
+      const next = btn.dataset.vote;
+      votes[id] = votes[id] === next ? "" : next;
+      saveJson(VOTE_KEY, votes);
+      render();
+    });
+
+    grid.addEventListener("input", (e) => {
+      const ta = e.target.closest("[data-note]");
+      if (!ta) return;
+      notes[ta.dataset.note] = ta.value;
+      saveJson(NOTE_KEY, notes);
+    });
+
+    async function boot() {
+      try {
+        const res = await fetch("listings.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("missing");
+        const data = await res.json();
+        if (data.market_note) market.textContent = data.market_note + (data.updated ? " · updated " + data.updated : "");
+        allListings = Array.isArray(data.listings) ? data.listings : [];
+      } catch (err) {
+        market.textContent = "If you opened this as a file, listings may not load until the folder is hosted or served locally. Vine is pulling the first batch either way.";
+        allListings = [];
+      }
+      render();
+    }
+    boot();
+
+  </script>
+</body>
+</html>

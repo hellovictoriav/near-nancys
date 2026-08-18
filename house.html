@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>House & calendar — Near Nancy's</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="inner">
+      <a class="brand" href="index.html">
+        <span>Handy · Vassileva</span>
+        <strong>Near Nancy's</strong>
+      </a>
+      <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="savings.html">Savings</a>
+      <a href="house.html" class="active">House</a>
+      <a href="board.html">Board</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="page-head">
+      <div class="bloom" aria-hidden="true"></div>
+      <div class="eyebrow">How we share the house · kind and specific</div>
+      <h1>Summer is prime. <em>Guests are welcome.</em></h1>
+      <p class="sub">This is a family house, not a fortress and not a hotel. The notes below are so nobody has to guess. They are not a lease.</p>
+    </header>
+
+    <div class="callout soft-blue">
+      <h3>The middle two weeks of August</h3>
+      <p>Those two weeks are all-together weeks. Fewer extra guests then, so Jannah, Kenya, Jacqueline, Kiyanna, Edna, and Victoria can actually be in the same rooms. Friends can still come if the family invites them as a group — just not a stack of separate plus-ones that turns the house into a boarding house.</p>
+      <p class="hint">Mid-August is not first-come. It is family time we protect on purpose.</p>
+    </div>
+
+    <div class="section-label">How to request space <span>propose, name people, wait for a yes</span></div>
+    <ol class="rule-list">
+      <li>
+        <div class="rule-num">1</div>
+        <div>
+          <h3>Propose dates early</h3>
+          <p>The earlier, the kinder. A March note about July is a gift. A Thursday text about Saturday is a squeeze.</p>
+        </div>
+      </li>
+      <li>
+        <div class="rule-num">2</div>
+        <div>
+          <h3>Say who is coming</h3>
+          <p>Names, not just a headcount. "Me plus two" is hard to plan beds around. "Kenya, Maya, and Uncle Ray" is something we can say yes to.</p>
+        </div>
+      </li>
+      <li>
+        <div class="rule-num">3</div>
+        <div>
+          <h3>Wait for a clear yes</h3>
+          <p>Silence is not a yes. A thumbs-up in a group chat is closer. If you haven't heard back, ask once more — don't assume the house is empty.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="section-label">When two units want the same week <span>especially prime summer</span></div>
+    <div class="two-col">
+      <div class="callout">
+        <h3>Write one request</h3>
+        <p>One written ask — here, or in the family thread — with dates and names. Give everyone 48 hours to object or offer a split. After that, treat a quiet "ok" as a yes.</p>
+      </div>
+      <div class="callout">
+        <h3>Split it, or take turns</h3>
+        <p>If two units want the same prime week, try splitting the week first. If that doesn't work, take turns year to year. Nobody "wins" August by asking first.</p>
+      </div>
+    </div>
+    <p class="market-note" style="text-align:left;margin-top:16px">Disagreements stay small: one request, 48 hours, then a conversation. The house is supposed to make us closer, not keep score.</p>
+
+    <div class="section-label">Request space <span>saved on this phone for now</span></div>
+    <div class="two-col">
+      <form class="callout" id="request-form">
+        <label>Which unit
+          <select id="unit" required>
+            <option>Jacqueline + Victoria</option>
+            <option>Jannah + Kiyanna</option>
+            <option>Kenya</option>
+            <option>Edna</option>
+          </select>
+        </label>
+        <div class="form-grid">
+          <label>Arrive <input type="date" id="start" required /></label>
+          <label>Leave <input type="date" id="end" required /></label>
+        </div>
+        <label>Who is coming
+          <input type="text" id="who" required placeholder="Names, not just a number" />
+        </label>
+        <label>Anything else
+          <textarea id="notes" placeholder="Guests, a birthday, a quiet week…"></textarea>
+        </label>
+        <button class="btn primary" type="submit">Save this request</button>
+        <p class="saved-ok" id="form-msg"></p>
+      </form>
+      <div class="callout" style="padding:0;overflow:hidden">
+        <div style="padding:18px 18px 8px">
+          <h3>On the calendar</h3>
+          <p class="hint" style="color:var(--muted);font-size:13px">This list lives in your browser until we have shared hosting. Screenshot or text the family if you need everyone to see it.</p>
+        </div>
+        <div id="requests"></div>
+        <div class="empty" id="req-empty" style="border:none;border-radius:0">
+          <h3>No requests yet</h3>
+          <p>When someone proposes dates, they'll show up here on this device.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <p><em>A family house, not a project plan.</em><br/>
+    Jannah, Kenya, Jacqueline, Kiyanna, Edna &amp; Victoria · purchase only · Martha's Vineyard</p>
+  </footer>
+
+  <script>
+
+    const KEY = "vineyard-space-requests-v1";
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { return []; }
+    }
+    function save(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
+
+    function fmtRange(start, end) {
+      try {
+        const a = new Date(start + "T12:00:00");
+        const b = new Date(end + "T12:00:00");
+        const opts = { month: "short", day: "numeric", year: "numeric" };
+        return a.toLocaleDateString("en-US", opts) + " – " + b.toLocaleDateString("en-US", opts);
+      } catch (e) {
+        return start + " – " + end;
+      }
+    }
+
+    function isMidAugust(start, end) {
+      const a = new Date(start + "T12:00:00");
+      const b = new Date(end + "T12:00:00");
+      // middle two weeks of August: roughly Aug 8–21
+      function inWindow(d) {
+        return d.getMonth() === 7 && d.getDate() >= 8 && d.getDate() <= 21;
+      }
+      return inWindow(a) || inWindow(b);
+    }
+
+    let requests = load();
+
+    function render() {
+      const list = document.getElementById("requests");
+      const empty = document.getElementById("req-empty");
+      list.innerHTML = "";
+      if (!requests.length) {
+        empty.hidden = false;
+        return;
+      }
+      empty.hidden = true;
+      requests.slice().reverse().forEach((r) => {
+        const el = document.createElement("div");
+        el.className = "request-item";
+        const flag = isMidAugust(r.start, r.end)
+          ? '<p class="hint" style="margin-top:6px;color:var(--hydrangea-deep);font-size:13px">Touches the all-together August weeks — talk it through, not first-come.</p>'
+          : "";
+        el.innerHTML =
+          '<div class="when">' + fmtRange(r.start, r.end) + '</div>' +
+          '<div class="meta" style="margin:4px 0 8px">' + r.unit + " · asked " + r.when + '</div>' +
+          '<p>' + (r.who || "").replace(/</g, "&lt;") + '</p>' +
+          (r.notes ? '<p class="hint" style="margin-top:6px;color:var(--muted);font-size:13.5px">' + r.notes.replace(/</g, "&lt;") + "</p>" : "") +
+          flag +
+          '<div class="actions" style="margin-top:10px"><button type="button" class="btn outline" data-del="' + r.id + '">Remove from this phone</button></div>';
+        list.appendChild(el);
+      });
+    }
+
+    document.getElementById("request-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const unit = document.getElementById("unit").value;
+      const start = document.getElementById("start").value;
+      const end = document.getElementById("end").value;
+      const who = document.getElementById("who").value.trim();
+      const notes = document.getElementById("notes").value.trim();
+      if (!start || !end || !who) return;
+      if (new Date(end) < new Date(start)) {
+        document.getElementById("form-msg").textContent = "End date should be on or after the start.";
+        return;
+      }
+      requests.push({
+        id: String(Date.now()),
+        unit, start, end, who, notes,
+        when: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      });
+      save(requests);
+      e.target.reset();
+      document.getElementById("form-msg").textContent = "Saved on this phone. A clear yes still happens in the family chat — this is the written request.";
+      render();
+    });
+
+    document.getElementById("requests").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-del]");
+      if (!btn) return;
+      requests = requests.filter((r) => r.id !== btn.dataset.del);
+      save(requests);
+      render();
+    });
+
+    render();
+
+  </script>
+</body>
+</html>

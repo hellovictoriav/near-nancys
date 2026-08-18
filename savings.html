@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Savings — Near Nancy's</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="inner">
+      <a class="brand" href="index.html">
+        <span>Handy · Vassileva</span>
+        <strong>Near Nancy's</strong>
+      </a>
+      <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="savings.html" class="active">Savings</a>
+      <a href="house.html">House</a>
+      <a href="board.html">Board</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <header class="page-head">
+      <div class="bloom" aria-hidden="true"></div>
+      <div class="eyebrow">August 2026 → April 2027 · about 8 months</div>
+      <h1>$25,000 each. <em>$100,000</em> together.</h1>
+      <p class="sub">Four family units, unless we decide to merge or split. The numbers below are a cheat-sheet, not a scolding. Type what you've actually set aside — it starts at zero, on purpose.</p>
+    </header>
+
+    <div class="callout soft-green">
+      <h3>Together so far</h3>
+      <div class="money" id="total-saved" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2rem;font-weight:600">$0</div>
+      <div class="progress-wrap">
+        <div class="bar"><i id="total-bar"></i></div>
+        <div class="progress-meta" id="total-meta">0% of $100,000</div>
+      </div>
+    </div>
+
+    <div class="section-label">Weekly &amp; monthly cheat-sheet <span>per family unit</span></div>
+    <div class="cheat">
+      <div class="cell"><em>$25,000</em><span>Target by April 2027</span></div>
+      <div class="cell"><em>$3,125</em><span>A month (8 months)</span></div>
+      <div class="cell"><em>$721</em><span>A week</span></div>
+      <div class="cell"><em>$103</em><span>A day, if it helps</span></div>
+    </div>
+    <p class="market-note">Same number four times is $100,000. Miss a week? Catch the next one. This is a pile, not a report card.</p>
+
+    <div class="section-label">The four units <span>edit the saved amount on this device</span></div>
+    <div class="grid" id="units"></div>
+
+    <div class="section-label">How we might split this <span>a conversation, not a rule</span></div>
+    <div class="callout soft-cedar">
+      <p>Default is equal units. Jacqueline + Victoria, Jannah + Kiyanna, Kenya, and Edna each put in $25,000. That's the simplest fair — one share per household, whether that household is one person or two.</p>
+      <p>If a unit uses the house more in summer, they could optionally put more in. That's a kitchen-table conversation, not a surcharge. Nobody owes extra unless they offer it.</p>
+      <p class="hint">Units can merge or split if someone's situation changes — a couple who want two shares, or two people who want to combine. Just say so out loud so the tracker matches real life. Amounts you type here live in this browser until we add shared hosting.</p>
+    </div>
+  </div>
+  <footer>
+    <p><em>A family house, not a project plan.</em><br/>
+    Jannah, Kenya, Jacqueline, Kiyanna, Edna &amp; Victoria · purchase only · Martha's Vineyard</p>
+  </footer>
+
+  <script>
+
+    const KEY = "vineyard-savings-v1";
+    const UNITS = [
+      { id: "jacqueline-victoria", name: "Jacqueline + Victoria", who: "Jackie & Victoria" },
+      { id: "jannah-kiyanna", name: "Jannah + Kiyanna", who: "Jannah & Kiyanna" },
+      { id: "kenya", name: "Kenya", who: "Kenya" },
+      { id: "edna", name: "Edna", who: "Edna Wells Handy" }
+    ];
+    const TARGET = 25000;
+    const TOTAL = TARGET * UNITS.length;
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+    }
+    function save(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
+    function fmt(n) {
+      return Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    }
+
+    const data = load();
+    UNITS.forEach((u) => { if (data[u.id] == null) data[u.id] = 0; });
+
+    function pct(saved, target) {
+      if (!target) return 0;
+      return Math.max(0, Math.min(100, Math.round((saved / target) * 100)));
+    }
+
+    function render() {
+      const grid = document.getElementById("units");
+      grid.innerHTML = "";
+      let sum = 0;
+      UNITS.forEach((u) => {
+        const saved = Number(data[u.id]) || 0;
+        sum += saved;
+        const p = pct(saved, TARGET);
+        const card = document.createElement("article");
+        card.className = "card unit-card";
+        card.innerHTML =
+          '<div class="card-body">' +
+            '<div class="kicker" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--hydrangea);font-weight:600">Family unit</div>' +
+            '<h2 class="name">' + u.name + '</h2>' +
+            '<div class="money">' + fmt(saved) + '</div>' +
+            '<div class="progress-wrap">' +
+              '<div class="bar"><i style="width:' + p + '%"></i></div>' +
+              '<div class="progress-meta"><span>' + p + '% of ' + fmt(TARGET) + '</span><span>' + fmt(Math.max(0, TARGET - saved)) + ' to go</span></div>' +
+            '</div>' +
+            '<label>Saved so far <input type="number" min="0" step="50" data-unit="' + u.id + '" value="' + saved + '" /></label>' +
+            '<p class="hint" style="font-size:12.5px;color:var(--muted)">Starts at $0. Type what this unit has set aside on this phone.</p>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+
+      const tp = pct(sum, TOTAL);
+      document.getElementById("total-saved").textContent = fmt(sum);
+      document.getElementById("total-bar").style.width = tp + "%";
+      document.getElementById("total-meta").textContent = tp + "% of " + fmt(TOTAL) + " · " + fmt(Math.max(0, TOTAL - sum)) + " still to gather";
+    }
+
+    document.getElementById("units").addEventListener("input", (e) => {
+      const input = e.target.closest("[data-unit]");
+      if (!input) return;
+      data[input.dataset.unit] = Math.max(0, Number(input.value) || 0);
+      save(data);
+      // update bars without stealing focus
+      const saved = data[input.dataset.unit];
+      const card = input.closest(".card");
+      card.querySelector(".money").textContent = fmt(saved);
+      const p = pct(saved, TARGET);
+      card.querySelector(".bar > i").style.width = p + "%";
+      card.querySelector(".progress-meta").innerHTML = "<span>" + p + "% of " + fmt(TARGET) + "</span><span>" + fmt(Math.max(0, TARGET - saved)) + " to go</span>";
+      let sum = UNITS.reduce((acc, u) => acc + (Number(data[u.id]) || 0), 0);
+      const tp = pct(sum, TOTAL);
+      document.getElementById("total-saved").textContent = fmt(sum);
+      document.getElementById("total-bar").style.width = tp + "%";
+      document.getElementById("total-meta").textContent = tp + "% of " + fmt(TOTAL) + " · " + fmt(Math.max(0, TOTAL - sum)) + " still to gather";
+    });
+
+    render();
+
+  </script>
+</body>
+</html>
