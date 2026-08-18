@@ -48,7 +48,7 @@
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty">
       <h3>Vine is pulling the first batch</h3>
-      <p>Homes and land near Nancy's will land here. Nothing is missing — we just haven't written the first cards yet.</p>
+      <p>Homes and land within 25 minutes of Nancy's restaurant will land here. Nothing is missing — we just haven't written the first cards yet.</p>
     </div>
   </div>
   <footer>
@@ -170,7 +170,7 @@
       if (!allListings.length) {
         empty.hidden = false;
         empty.querySelector("h3").textContent = "Vine is pulling the first batch";
-        empty.querySelector("p").textContent = "Homes and land near Nancy's will land here. Nothing is missing — we just haven't written the first cards yet.";
+        empty.querySelector("p").textContent = "Homes and land within 25 minutes of Nancy's restaurant will land here. Nothing is missing — we just haven't written the first cards yet.";
         return;
       }
       if (!shown.length) {
@@ -188,7 +188,7 @@
         const vote = votes[id] || "";
         const note = notes[id] || "";
         const drive = item.drive_min_estimate != null
-          ? "≈ " + item.drive_min_estimate + " min to Nancy's"
+          ? "≈ " + item.drive_min_estimate + " min to Nancy\'s restaurant"
           : "Drive time TBA";
         const tags = [];
         if (truthyAmenity(item.pool)) tags.push('<span class="tag pool">Pool</span>');
