@@ -1,7 +1,7 @@
 /**
  * Near Nancy's family votes API.
  * Bound or standalone — writes to spreadsheet
- * 1Gc7KLJo3cVnlkzMBZowERY6ESzSrxy6cnm7NvPbMMAI
+ * 1RTtasYfCW41xW15fD_oYpg0BEoE0D-kmInNVHorTLEU
  *
  * Deploy: Deploy → New deployment → Web app
  *   Execute as: Me
@@ -10,7 +10,7 @@
  */
 var ALLOWED = ["Jannah", "Kiyanna", "Kenya", "Jacqueline", "Victoria", "Edna"];
 var VOTES = ["love", "maybe", "pass", ""];
-var SHEET_ID = "1Gc7KLJo3cVnlkzMBZowERY6ESzSrxy6cnm7NvPbMMAI";
+var SHEET_ID = "1RTtasYfCW41xW15fD_oYpg0BEoE0D-kmInNVHorTLEU";
 
 function jsonOut_(obj) {
   return ContentService
