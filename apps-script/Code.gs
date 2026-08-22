@@ -8,7 +8,7 @@
  *   Who has access: Anyone
  * Paste the /macros/s/.../exec URL into votes-config.json
  */
-var ALLOWED = ["Jannah", "Kiyanna", "Kenya", "Jacqueline", "Victoria", "Edna"];
+var ALLOWED = ["Edna", "Jannah", "Kiyanna", "Kenya", "Jacqueline", "Victoria"];
 var VOTES = ["love", "maybe", "pass", ""];
 var SHEET_ID = "1RTtasYfCW41xW15fD_oYpg0BEoE0D-kmInNVHorTLEU";
 
