@@ -31,7 +31,12 @@
       <div class="bloom" aria-hidden="true"></div>
       <div class="eyebrow">Homes &amp; land · within ~25 min of Oak Bluffs</div>
       <h1>What Vine is watching</h1>
-      <p class="sub">Homes we could walk into, and land we could grow into. Vote on your phone. Notes stay on this device until we add shared hosting.</p>
+      <p class="sub">Homes we could walk into, and land we could grow into. Pick your name, then Love / Maybe / Pass — the family sees it on every phone.</p>
+      <div class="who-block">
+        <div class="who-label">Who are you?</div>
+        <p class="who-hint" id="whoHint">Tap your first name before you vote. Reactions are shared.</p>
+        <div class="who-chips" id="whoChips"></div>
+      </div>
       <div class="filters" id="filters">
         <button class="chip active" data-filter="all">All</button>
         <button class="chip" data-filter="homes">Homes</button>
@@ -57,9 +62,19 @@
   </footer>
 
   <script>
-
+    const FAMILY = [
+      { id: "Jannah", label: "Jannah" },
+      { id: "Kiyanna", label: "Kiyanna" },
+      { id: "Kenya", label: "Kenya" },
+      { id: "Jacqueline", label: "Jackie" },
+      { id: "Victoria", label: "Victoria" },
+      { id: "Edna", label: "Edna" }
+    ];
+    const DISPLAY = Object.fromEntries(FAMILY.map((p) => [p.id, p.label]));
+    const WHO_KEY = "vineyard-who-v1";
     const VOTE_KEY = "vineyard-votes-v1";
     const NOTE_KEY = "vineyard-listing-notes-v1";
+    const SHARED_KEY = "vineyard-family-votes-v2";
     const FIT_LABEL = {
       "strong": "Strong",
       "stretch-budget": "Stretch budget",
@@ -72,6 +87,7 @@
       "4bed-expandable": "fourbed-expandable",
       "land": "land"
     };
+    const VOTE_LABEL = { love: "Love", maybe: "Maybe", pass: "Pass" };
 
     function loadJson(key, fallback) {
       try {
@@ -130,15 +146,22 @@
       return [beds, baths].concat(extra).join(" · ");
     }
 
-    const votes = loadJson(VOTE_KEY, {});
-    const notes = loadJson(NOTE_KEY, {});
+    let who = localStorage.getItem(WHO_KEY) || "";
+    if (!FAMILY.some((p) => p.id === who)) who = "";
+    const localVotes = loadJson(VOTE_KEY, {});
+    const localNotes = loadJson(NOTE_KEY, {});
+    let familyVotes = loadJson(SHARED_KEY, []);
+    let endpoint = "";
     let allListings = [];
     let filter = "all";
+    const noteTimers = {};
 
     const grid = document.getElementById("grid");
     const empty = document.getElementById("empty");
     const market = document.getElementById("market");
     const countEl = document.getElementById("count");
+    const whoChips = document.getElementById("whoChips");
+    const whoHint = document.getElementById("whoHint");
 
     function truthyAmenity(v) {
       if (v === true) return true;
@@ -161,7 +184,71 @@
       return true;
     }
 
+    function setFamilyVotes(list) {
+      familyVotes = Array.isArray(list) ? list : [];
+      saveJson(SHARED_KEY, familyVotes);
+    }
+    function recordFor(name, listingId) {
+      return familyVotes.find((v) => v.name === name && String(v.listing_id) === String(listingId)) || null;
+    }
+    function myRecord(listingId) {
+      if (!who) return { vote: localVotes[listingId] || "", note: localNotes[listingId] || "" };
+      const rec = recordFor(who, listingId);
+      if (rec) return { vote: rec.vote || "", note: rec.note || "" };
+      return { vote: localVotes[listingId] || "", note: localNotes[listingId] || "" };
+    }
+    function upsertLocal(listingId, vote, note) {
+      if (vote != null) {
+        localVotes[listingId] = vote;
+        saveJson(VOTE_KEY, localVotes);
+      }
+      if (note != null) {
+        localNotes[listingId] = note;
+        saveJson(NOTE_KEY, localNotes);
+      }
+      if (!who) return;
+      const next = familyVotes.filter((v) => !(v.name === who && String(v.listing_id) === String(listingId)));
+      const prev = recordFor(who, listingId) || {};
+      next.push({
+        name: who,
+        listing_id: listingId,
+        vote: vote != null ? vote : (prev.vote || ""),
+        note: note != null ? note : (prev.note || ""),
+        timestamp: new Date().toISOString()
+      });
+      setFamilyVotes(next);
+    }
+
+    function renderWho() {
+      whoChips.innerHTML = FAMILY.map((p) =>
+        '<button type="button" class="who-chip' + (who === p.id ? " active" : "") + '" data-name="' + p.id + '">' + esc(p.label) + "</button>"
+      ).join("");
+      whoHint.textContent = who
+        ? ("Voting as " + (DISPLAY[who] || who) + ". Love / Maybe / Pass and notes sync for the family.")
+        : "Tap your first name before you vote. Reactions are shared.";
+    }
+
+    function familyHtml(listingId) {
+      const rows = familyVotes
+        .filter((v) => String(v.listing_id) === String(listingId) && (v.vote || v.note))
+        .sort((a, b) => FAMILY.findIndex((p) => p.id === a.name) - FAMILY.findIndex((p) => p.id === b.name));
+      if (!rows.length) {
+        return '<div class="family-react empty-react">No family votes yet</div>';
+      }
+      const pills = rows.filter((v) => v.vote && VOTE_LABEL[v.vote]).map((v) =>
+        '<span class="react-pill ' + esc(v.vote) + '">' + esc(DISPLAY[v.name] || v.name) + " · " + VOTE_LABEL[v.vote] + "</span>"
+      ).join("");
+      const notes = rows.filter((v) => String(v.note || "").trim()).map((v) =>
+        '<div class="family-note"><strong>' + esc(DISPLAY[v.name] || v.name) + "</strong> " + esc(v.note) + "</div>"
+      ).join("");
+      return '<div class="family-react">' +
+        (pills ? '<div class="react-pills">' + pills + "</div>" : "") +
+        notes +
+      "</div>";
+    }
+
     function render() {
+      renderWho();
       const shown = allListings.filter(applyFilter);
       countEl.textContent = allListings.length
         ? shown.length + " of " + allListings.length
@@ -185,10 +272,11 @@
         const id = item.id || ("tmp-" + i);
         const src = photoSrc(item);
         const fit = item.fit || (isLand(item) ? "land" : "strong");
-        const vote = votes[id] || "";
-        const note = notes[id] || "";
+        const mine = myRecord(id);
+        const vote = mine.vote || "";
+        const note = mine.note || "";
         const drive = item.drive_min_estimate != null
-          ? "≈ " + item.drive_min_estimate + " min to Nancy\'s restaurant"
+          ? "≈ " + item.drive_min_estimate + " min to Nancy's restaurant"
           : "Drive time TBA";
         const tags = [];
         if (truthyAmenity(item.pool)) tags.push('<span class="tag pool">Pool</span>');
@@ -223,12 +311,13 @@
             beachNote +
             (listingNotes ? '<p class="notes">' + listingNotes + '</p>' : "") +
             (status && status !== "active" ? '<div class="meta">Status: ' + esc(item.status) + '</div>' : "") +
-            '<div class="vote-row" data-id="' + esc(id) + '">' +
+            '<div class="vote-row" data-id="' + esc(id) + '" data-address="' + address + '">' +
               '<button type="button" class="vote love' + (vote === "love" ? " active" : "") + '" data-vote="love">Love</button>' +
               '<button type="button" class="vote maybe' + (vote === "maybe" ? " active" : "") + '" data-vote="maybe">Maybe</button>' +
               '<button type="button" class="vote pass' + (vote === "pass" ? " active" : "") + '" data-vote="pass">Pass</button>' +
             '</div>' +
-            '<label>Your note <textarea class="card-note" data-note="' + esc(id) + '" placeholder="What we like, what worries us…">' + esc(note) + '</textarea></label>' +
+            familyHtml(id) +
+            '<label>Your note <textarea class="card-note" data-note="' + esc(id) + '" data-address="' + address + '" placeholder="' + (who ? "What we like, what worries us…" : "Pick your name first, then write a note") + '"' + (who ? "" : " disabled") + '>' + esc(note) + '</textarea></label>' +
             '<div class="actions">' +
               '<a class="btn primary" href="' + url + '" target="_blank" rel="noopener">View listing →</a>' +
             '</div>' +
@@ -237,32 +326,126 @@
       });
     }
 
+    async function loadEndpoint() {
+      try {
+        const res = await fetch("votes-config.json", { cache: "no-store" });
+        if (!res.ok) return "";
+        const data = await res.json();
+        const url = String(data.endpoint || "").trim();
+        return /^https:\/\/script\.google\.com\//i.test(url) ? url : "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    async function apiGet(params) {
+      if (!endpoint) return null;
+      const q = new URLSearchParams(params);
+      const res = await fetch(endpoint + "?" + q.toString(), { cache: "no-store" });
+      if (!res.ok) throw new Error("vote api " + res.status);
+      return res.json();
+    }
+
+    async function refreshVotes() {
+      try {
+        const data = await apiGet({ op: "list" });
+        if (data && Array.isArray(data.votes)) {
+          setFamilyVotes(data.votes);
+          render();
+          return;
+        }
+      } catch (e) {
+        /* keep cached votes */
+      }
+      render();
+    }
+
+    async function writeVote(payload) {
+      upsertLocal(payload.listing_id, payload.vote, payload.note);
+      render();
+      try {
+        const data = await apiGet({
+          op: "vote",
+          name: payload.name,
+          listing_id: payload.listing_id,
+          address: payload.address || "",
+          vote: payload.vote == null ? "" : payload.vote,
+          note: payload.note == null ? "" : payload.note,
+          action: payload.action || "vote"
+        });
+        if (data && data.ok === false) {
+          whoHint.textContent = data.error || "Vote did not save to the family sheet.";
+          return;
+        }
+        if (data && Array.isArray(data.votes)) setFamilyVotes(data.votes);
+        else await refreshVotes();
+        render();
+      } catch (e) {
+        whoHint.textContent = "Saved on this phone. Family sheet is offline — try again in a minute.";
+      }
+    }
+
     document.getElementById("filters").addEventListener("click", (e) => {
       const btn = e.target.closest(".chip");
       if (!btn) return;
       filter = btn.dataset.filter;
-      document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === btn));
+      document.querySelectorAll("#filters .chip").forEach((c) => c.classList.toggle("active", c === btn));
+      render();
+    });
+
+    whoChips.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-name]");
+      if (!btn) return;
+      who = btn.dataset.name;
+      localStorage.setItem(WHO_KEY, who);
       render();
     });
 
     grid.addEventListener("click", (e) => {
       const btn = e.target.closest(".vote");
       if (!btn) return;
-      const id = btn.parentElement.dataset.id;
+      if (!who) {
+        whoHint.textContent = "Pick your first name at the top, then vote.";
+        whoChips.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      const row = btn.parentElement;
+      const id = row.dataset.id;
+      const address = row.dataset.address || "";
+      const mine = myRecord(id);
       const next = btn.dataset.vote;
-      votes[id] = votes[id] === next ? "" : next;
-      saveJson(VOTE_KEY, votes);
-      render();
+      const vote = mine.vote === next ? "" : next;
+      writeVote({
+        name: who,
+        listing_id: id,
+        address: address,
+        vote: vote,
+        note: mine.note || "",
+        action: "vote"
+      });
     });
 
     grid.addEventListener("input", (e) => {
       const ta = e.target.closest("[data-note]");
-      if (!ta) return;
-      notes[ta.dataset.note] = ta.value;
-      saveJson(NOTE_KEY, notes);
+      if (!ta || !who) return;
+      const id = ta.dataset.note;
+      upsertLocal(id, null, ta.value);
+      clearTimeout(noteTimers[id]);
+      noteTimers[id] = setTimeout(() => {
+        writeVote({
+          name: who,
+          listing_id: id,
+          address: ta.dataset.address || "",
+          vote: myRecord(id).vote || "",
+          note: ta.value,
+          action: "note"
+        });
+      }, 700);
     });
 
     async function boot() {
+      renderWho();
+      endpoint = await loadEndpoint();
       try {
         const res = await fetch("listings.json", { cache: "no-store" });
         if (!res.ok) throw new Error("missing");
@@ -273,10 +456,13 @@
         market.textContent = "If you opened this as a file, listings may not load until the folder is hosted or served locally. Vine is pulling the first batch either way.";
         allListings = [];
       }
-      render();
+      if (!endpoint) {
+        whoHint.textContent = (who ? ("Voting as " + (DISPLAY[who] || who) + ". ") : "Pick your name. ") +
+          "Family sync waits on the Apps Script deploy — votes stay on this phone until then.";
+      }
+      await refreshVotes();
     }
     boot();
-
   </script>
 </body>
 </html>

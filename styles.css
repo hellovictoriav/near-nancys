@@ -879,3 +879,81 @@ footer em {
   opacity: 0.55;
 }
 .notes, .meta { overflow-wrap: anywhere; }
+
+/* Who are you + family reactions */
+.who-block {
+  margin: 22px auto 4px;
+  max-width: 560px;
+  text-align: center;
+}
+.who-label {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.who-hint {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+.who-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.who-chip {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.who-chip:hover { border-color: var(--hydrangea); color: var(--hydrangea-deep); }
+.who-chip.active {
+  background: var(--hydrangea);
+  border-color: var(--hydrangea);
+  color: #fff;
+}
+.family-react {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+.family-react.empty-react {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.react-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.react-pill {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+.react-pill.love { background: var(--green-soft); color: var(--green); }
+.react-pill.maybe { background: var(--amber-soft); color: var(--amber); }
+.react-pill.pass { background: var(--rose-soft); color: var(--rose); }
+.family-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.family-note strong { color: var(--ink); font-weight: 600; }
+.card-note:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
