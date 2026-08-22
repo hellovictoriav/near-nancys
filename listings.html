@@ -117,6 +117,12 @@
       if (!n || n.startsWith(".")) return "";
       return "images/" + n;
     }
+    function safePhotoPath(path) {
+      const p = String(path || "").replace(/\\/g, "/").replace(/^(\.\/)+/, "");
+      if (!p || p.startsWith(".") || p.includes("..")) return "";
+      if (/^images\//i.test(p)) return p;
+      return safePhoto(p);
+    }
     function money(n) {
       if (n == null || n === "" || Number.isNaN(Number(n))) return "Price TBA";
       return Number(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -128,6 +134,20 @@
       if (item.photo_local) return safePhoto(item.photo_local);
       if (item.photo_url && /^https?:\/\//i.test(item.photo_url)) return item.photo_url;
       return null;
+    }
+    function photoList(item) {
+      const out = [];
+      const seen = new Set();
+      const add = (p) => {
+        const s = safePhotoPath(p);
+        if (!s || seen.has(s)) return;
+        seen.add(s);
+        out.push(s);
+      };
+      if (Array.isArray(item.photos) && item.photos.length) item.photos.forEach(add);
+      else if (item.photo_local) add(item.photo_local);
+      if (!out.length && item.photo_url && /^https?:\/\//i.test(item.photo_url)) out.push(item.photo_url);
+      return out;
     }
     function placeholderClass(item, i) {
       if (isLand(item)) return "ph-land";
@@ -270,7 +290,6 @@
 
       shown.forEach((item, i) => {
         const id = item.id || ("tmp-" + i);
-        const src = photoSrc(item);
         const fit = item.fit || (isLand(item) ? "land" : "strong");
         const mine = myRecord(id);
         const vote = mine.vote || "";
@@ -290,15 +309,31 @@
         const town = esc(item.town || "Martha's Vineyard");
         const listingNotes = item.notes ? esc(item.notes) : "";
         const status = String(item.status || "active").toLowerCase();
-        const photoHtml = src
-          ? '<img src="' + esc(src) + '" alt="' + address + '" loading="lazy" />'
+        const gallery = photoList(item);
+        const photoHtml = gallery.length
+          ? gallery.map((srcPath, pi) => {
+              const alt = address + (gallery.length > 1 ? (' photo ' + (pi + 1)) : '');
+              if (pi === 0) {
+                return '<img class="carousel-slide is-active" src="' + esc(srcPath) + '" alt="' + alt + '" loading="eager" decoding="async" />';
+              }
+              return '<img class="carousel-slide" data-src="' + esc(srcPath) + '" alt="' + alt + '" loading="lazy" decoding="async" />';
+            }).join("")
+          : "";
+        const carouselControls = gallery.length > 1
+          ? '<button type="button" class="carousel-btn prev" aria-label="Previous photo">‹</button>' +
+            '<button type="button" class="carousel-btn next" aria-label="Next photo">›</button>' +
+            '<div class="carousel-count" aria-live="polite">1/' + gallery.length + '</div>' +
+            '<div class="carousel-dots" role="tablist" aria-label="Photos">' +
+              gallery.map((_, pi) => '<button type="button" class="carousel-dot' + (pi === 0 ? ' is-active' : '') + '" data-idx="' + pi + '" aria-label="Photo ' + (pi + 1) + '"></button>').join("") +
+            '</div>'
           : "";
 
         const article = document.createElement("article");
         article.className = "card";
         article.innerHTML =
-          '<div class="photo ' + placeholderClass(item, i) + '">' +
-            photoHtml +
+          '<div class="photo' + (gallery.length > 1 ? ' has-carousel' : '') + ' ' + placeholderClass(item, i) + '" data-carousel' + (gallery.length > 1 ? ' data-count="' + gallery.length + '"' : '') + '>' +
+            '<div class="carousel-track">' + photoHtml + '</div>' +
+            carouselControls +
             '<span class="badge ' + (FIT_CLASS[fit] || "strong") + '">' + esc(FIT_LABEL[fit] || fit) + '</span>' +
             '<span class="photo-chip">' + town + '</span>' +
           '</div>' +
@@ -441,6 +476,78 @@
           action: "note"
         });
       }, 700);
+    });
+
+
+    function setCarouselIndex(photo, idx) {
+      const slides = photo.querySelectorAll(".carousel-slide");
+      const dots = photo.querySelectorAll(".carousel-dot");
+      const count = photo.querySelector(".carousel-count");
+      const n = slides.length;
+      if (!n) return;
+      const next = ((idx % n) + n) % n;
+      slides.forEach((img, i) => {
+        const on = i === next;
+        img.classList.toggle("is-active", on);
+        if (on && img.dataset.src && !img.getAttribute("src")) {
+          img.src = img.dataset.src;
+          img.removeAttribute("data-src");
+        }
+        // warm neighbor
+        if (Math.abs(i - next) === 1 && img.dataset.src && !img.getAttribute("src")) {
+          img.src = img.dataset.src;
+          img.removeAttribute("data-src");
+        }
+      });
+      dots.forEach((d, i) => d.classList.toggle("is-active", i === next));
+      if (count) count.textContent = (next + 1) + "/" + n;
+      photo.dataset.idx = String(next);
+    }
+
+    grid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".carousel-btn, .carousel-dot");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const photo = btn.closest("[data-carousel]");
+      if (!photo) return;
+      const cur = Number(photo.dataset.idx || 0);
+      if (btn.classList.contains("prev")) setCarouselIndex(photo, cur - 1);
+      else if (btn.classList.contains("next")) setCarouselIndex(photo, cur + 1);
+      else if (btn.classList.contains("carousel-dot")) setCarouselIndex(photo, Number(btn.dataset.idx || 0));
+    });
+
+    // Swipe on photo galleries
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchPhoto = null;
+    grid.addEventListener("touchstart", (e) => {
+      const photo = e.target.closest("[data-carousel]");
+      if (!photo || !e.touches[0]) return;
+      touchPhoto = photo;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    grid.addEventListener("touchend", (e) => {
+      if (!touchPhoto || !e.changedTouches[0]) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const photo = touchPhoto;
+      touchPhoto = null;
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      const cur = Number(photo.dataset.idx || 0);
+      setCarouselIndex(photo, dx < 0 ? cur + 1 : cur - 1);
+    }, { passive: true });
+
+    // Click on image advances (desktop)
+    grid.addEventListener("click", (e) => {
+      if (e.target.closest(".carousel-btn, .carousel-dot, .badge, .photo-chip")) return;
+      const slide = e.target.closest(".carousel-slide");
+      if (!slide) return;
+      const photo = slide.closest("[data-carousel]");
+      if (!photo) return;
+      const cur = Number(photo.dataset.idx || 0);
+      setCarouselIndex(photo, cur + 1);
     });
 
     async function boot() {
