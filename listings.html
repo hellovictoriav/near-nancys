@@ -39,6 +39,7 @@
       </div>
       <div class="filters" id="filters">
         <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="open">Open</button>
         <button class="chip" data-filter="homes">Homes</button>
         <button class="chip" data-filter="land">Land</button>
         <button class="chip" data-filter="under2m">Under $2M</button>
@@ -191,10 +192,26 @@
       if (s.startsWith("none noted") || s.startsWith("none;") || s.startsWith("none,")) return false;
       return true;
     }
+    function statusKey(item) {
+      const s = String(item.status || "active").toLowerCase().replace(/[_\s]+/g, "-");
+      if (s === "active-under-contract" || s === "under-contract" || s === "undercontract") return "pending";
+      if (s === "contingent-offer") return "contingent";
+      if (s === "off-market" || s === "withdrawn" || s === "expired") return "gone";
+      return s || "active";
+    }
+    function statusMeta(key) {
+      if (key === "pending") return { label: "Pending", cls: "pending", line: "Pending — offer accepted. Not freely buyable." };
+      if (key === "contingent") return { label: "Contingent", cls: "contingent", line: "Contingent — backup only unless it falls through." };
+      if (key === "sold") return { label: "Sold", cls: "sold", line: "Sold — do not treat as buyable." };
+      if (key === "gone") return { label: "Gone", cls: "sold", line: "Off the market — do not treat as buyable." };
+      return null;
+    }
     function applyFilter(item) {
       const land = isLand(item);
       const price = Number(item.price);
+      const st = statusKey(item);
       if (filter === "all") return true;
+      if (filter === "open") return st === "active";
       if (filter === "homes") return !land;
       if (filter === "land") return land;
       if (filter === "under2m") return !Number.isNaN(price) && price < 2000000;
@@ -328,13 +345,22 @@
             '</div>'
           : "";
 
+        const st = statusKey(item);
+        const stMeta = statusMeta(st);
         const article = document.createElement("article");
-        article.className = "card";
+        article.className = "card" + (stMeta ? (" is-" + stMeta.cls) : "");
+        const statusFlag = stMeta
+          ? '<span class="status-flag ' + stMeta.cls + '">' + esc(stMeta.label) + "</span>"
+          : "";
+        const statusLine = stMeta
+          ? '<div class="status-line ' + stMeta.cls + '">' + esc(stMeta.line) + "</div>"
+          : "";
         article.innerHTML =
           '<div class="photo' + (gallery.length > 1 ? ' has-carousel' : '') + ' ' + placeholderClass(item, i) + '" data-carousel' + (gallery.length > 1 ? ' data-count="' + gallery.length + '"' : '') + '>' +
             '<div class="carousel-track">' + photoHtml + '</div>' +
             carouselControls +
             '<span class="badge ' + (FIT_CLASS[fit] || "strong") + '">' + esc(FIT_LABEL[fit] || fit) + '</span>' +
+            statusFlag +
             '<span class="photo-chip">' + town + '</span>' +
           '</div>' +
           '<div class="card-body">' +
@@ -345,7 +371,7 @@
             (tags.length ? '<div class="tags">' + tags.join("") + '</div>' : "") +
             beachNote +
             (listingNotes ? '<p class="notes">' + listingNotes + '</p>' : "") +
-            (status && status !== "active" ? '<div class="meta">Status: ' + esc(item.status) + '</div>' : "") +
+            statusLine +
             '<div class="vote-row" data-id="' + esc(id) + '" data-address="' + address + '">' +
               '<button type="button" class="vote love' + (vote === "love" ? " active" : "") + '" data-vote="love">Love</button>' +
               '<button type="button" class="vote maybe' + (vote === "maybe" ? " active" : "") + '" data-vote="maybe">Maybe</button>' +
