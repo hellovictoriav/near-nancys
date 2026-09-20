@@ -1131,3 +1131,57 @@ footer em {
 }
 
 .photo.has-carousel .status-flag { top: 44px; }
+
+
+/* Costs calculator */
+.tax-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.soft-inset {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.cost-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.cost-list li em {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink);
+}
+.toggle-row {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  grid-template-columns: none !important;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--hydrangea-deep);
+}
+.muted-inline {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+.calc-card input[type="range"] {
+  width: 100%;
+  accent-color: var(--hydrangea-deep);
+}
+.calc-out {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
